@@ -1,0 +1,483 @@
+RESUMEIQ BACKEND SUMMARY
+========================
+
+1. BACKEND OVERVIEW
+-------------------
+ResumeIQ has a Node.js and Express backend for an AI-powered interview preparation
+application.
+
+The backend currently provides:
+- User registration and login
+- Password hashing with bcryptjs
+- JWT authentication stored in cookies
+- Logout through a MongoDB token blacklist
+- Protected interview-report endpoints
+- Resume PDF upload and text extraction
+- AI-generated interview reports using Groq
+- AI response validation using Zod
+- Interview-report storage and retrieval using MongoDB
+
+The backend server runs on port 3000.
+The frontend origin allowed by CORS is http://localhost:5173.
+
+
+2. TECHNOLOGY STACK
+-------------------
+- Node.js
+- Express 5.2.1
+- MongoDB
+- Mongoose 9.3.0
+- Groq AI SDK 1.1.2
+- JSON Web Tokens
+- bcryptjs
+- Multer
+- pdf-parse
+- Zod
+- Morgan
+- CORS
+- cookie-parser
+- dotenv
+
+The backend uses CommonJS syntax with require() and module.exports.
+
+
+3. PACKAGES USED
+----------------
+The dependencies listed in Backend/package.json are:
+
+- bcryptjs: ^3.0.3
+	Hashes passwords during registration and verifies passwords during login.
+
+- cookie-parser: ^1.4.7
+	Reads the authentication token from request cookies.
+
+- cors: ^2.8.6
+	Allows the frontend to communicate with the backend while sending cookies.
+
+- dotenv: ^17.3.1
+	Loads environment variables from the .env file.
+
+- express: ^5.2.1
+	Creates the HTTP server, middleware pipeline, and API routes.
+
+- groq-sdk: ^1.1.2
+	Sends the resume and job information to Groq AI and receives an interview report.
+
+- jsonwebtoken: ^9.0.3
+	Creates and verifies one-day JWT authentication tokens.
+
+- mongoose: ^9.3.0
+	Connects to MongoDB and defines database schemas and models.
+
+- morgan: ^1.10.1
+	Logs HTTP requests in the development console.
+
+- multer: ^2.1.1
+	Handles multipart/form-data resume uploads in memory with a 3 MB limit.
+
+- pdf-parse: ^2.4.5
+	Extracts text from the uploaded PDF resume.
+
+- zod: ^4.4.2
+	Validates the structure and data types of the AI-generated report.
+
+- zod-to-json-schema: ^3.25.2
+	Installed in the project but not currently used by the active backend code.
+
+There is currently no automated test suite. The package test script is only a
+placeholder that prints an error message.
+
+
+4. BACKEND FILE STRUCTURE
+-------------------------
+Backend/
+|- server.js
+|- package.json
+|- package-lock.json
+|- .env
+|- backendsummary.txt
+|- src/
+	 |- app.js
+	 |- config/
+	 |  |- config.js
+	 |  |- database.js
+	 |- controller/
+	 |  |- auth.controller.js
+	 |  |- interview.controller.js
+	 |- middlewares/
+	 |  |- auth.middleware.js
+	 |  |- file.middleware.js
+	 |- models/
+	 |  |- user.model.js
+	 |  |- blacklist.model.js
+	 |  |- interviewReport.model.js
+	 |- routes/
+	 |  |- auth.route.js
+	 |  |- interview.routes.js
+	 |- services/
+			|- ai.service.js
+			|- temp.js
+
+
+5. FILE-BY-FILE RESPONSIBILITIES
+--------------------------------
+
+server.js
+- Loads environment variables using dotenv.
+- Imports the Express application.
+- Imports the MongoDB connection function.
+- Starts the database connection.
+- Starts the server on port 3000.
+
+src/app.js
+- Creates the Express application.
+- Enables JSON request parsing.
+- Enables Morgan request logging.
+- Enables cookie parsing.
+- Configures CORS for the frontend.
+- Mounts authentication routes at /api/auth.
+- Mounts interview routes at /api/interview.
+
+src/config/config.js
+- Loads environment variables.
+- Checks that MONGO_URI exists.
+- Checks that JWT_SECRET exists.
+- Checks that GROQ_API_KEY exists.
+- Exports the configuration values.
+
+src/config/database.js
+- Imports Mongoose.
+- Connects to MongoDB using MONGO_URI.
+- Logs a success message after connecting.
+- Logs connection errors if the connection fails.
+
+src/controller/auth.controller.js
+- Implements registration.
+- Implements login.
+- Implements logout.
+- Implements current-user lookup.
+
+src/controller/interview.controller.js
+- Extracts text from uploaded PDF resumes.
+- Calls the AI service to generate a report.
+- Saves generated reports for the logged-in user.
+- Fetches one report by id.
+- Fetches all reports belonging to the logged-in user.
+
+src/middlewares/auth.middleware.js
+- Reads the token cookie.
+- Rejects requests without a token.
+- Checks whether the token has been blacklisted.
+- Verifies the JWT signature and expiry.
+- Stores the decoded user information in req.user.
+
+src/middlewares/file.middleware.js
+- Uses Multer memoryStorage().
+- Keeps uploaded files in memory instead of saving them to disk.
+- Limits uploaded files to 3 MB.
+
+src/services/ai.service.js
+- Creates the Groq SDK client.
+- Builds the interview-report prompt.
+- Requests strict JSON from the Groq model.
+- Extracts the JSON object from the model response.
+- Parses the JSON.
+- Validates it with a Zod schema.
+- Returns the validated report.
+
+src/services/temp.js
+- Contains sample resume, self-description, and job-description data.
+- It is not used by the active interview-report request workflow.
+
+
+6. ENVIRONMENT VARIABLES
+------------------------
+The backend expects these variables in Backend/.env:
+
+- MONGO_URI
+	MongoDB connection string.
+
+- JWT_SECRET
+	Secret used to sign and verify authentication tokens.
+
+- GROQ_API_KEY
+	API key used to access the Groq AI service.
+
+The actual secret values are kept in .env and are not included in this summary.
+
+
+7. APPLICATION STARTUP WORKFLOW
+-------------------------------
+1. server.js loads the .env file.
+2. The Express app is imported from src/app.js.
+3. The MongoDB connection helper is imported from src/config/database.js.
+4. MongoDB connection is started using MONGO_URI.
+5. Express starts listening on port 3000.
+6. Global middleware is registered in app.js.
+7. /api/auth routes are registered.
+8. /api/interview routes are registered.
+
+
+8. GLOBAL MIDDLEWARE WORKFLOW
+-----------------------------
+The Express application enables:
+
+- express.json()
+	Parses JSON request bodies.
+
+- morgan("dev")
+	Prints HTTP request information in the terminal.
+
+- cookieParser()
+	Makes cookies available through req.cookies.
+
+- cors({ origin: "http://localhost:5173", credentials: true })
+	Allows the Vite frontend to make credentialed requests and use the JWT cookie.
+
+
+9. AUTHENTICATION WORKFLOW
+--------------------------
+
+REGISTRATION
+1. The client sends username, email, and password.
+2. The controller checks that all three values were provided.
+3. MongoDB is checked for an existing username or email.
+4. The password is hashed using bcryptjs with 10 salt rounds.
+5. The new user is saved in MongoDB.
+6. A JWT is created with the user's id and username.
+7. The JWT expires after one day.
+8. The JWT is stored in a cookie named token.
+9. The response returns the new user's id, username, and email.
+
+LOGIN
+1. The client sends email and password.
+2. The user is found by email.
+3. bcryptjs compares the submitted password with the stored hash.
+4. Invalid credentials return HTTP 400.
+5. A one-day JWT is created for valid credentials.
+6. The JWT is stored in the token cookie.
+7. The response returns the user's id, username, and email.
+
+PROTECTED REQUESTS
+1. auth.middleware.js reads req.cookies.token.
+2. A missing token returns HTTP 401.
+3. The token is searched in the blacklist collection.
+4. A blacklisted token returns HTTP 401.
+5. jwt.verify checks the token signature and expiration.
+6. The decoded token data is assigned to req.user.
+7. The protected controller is called.
+
+LOGOUT
+1. The token is read from the cookie.
+2. The token is inserted into the blacklist collection.
+3. The token cookie is cleared.
+4. Future requests using that token are rejected.
+
+
+10. AUTHENTICATION API ROUTES
+-----------------------------
+
+POST /api/auth/register
+- Public route.
+- Request body: { username, email, password }
+- Success response: HTTP 201.
+- Creates a user and sets the token cookie.
+- Missing details: HTTP 400.
+- Duplicate username or email: HTTP 400.
+
+POST /api/auth/login
+- Public route.
+- Request body: { email, password }
+- Success response: HTTP 200.
+- Sets the token cookie.
+- Invalid email or password: HTTP 400.
+
+GET /api/auth/logout
+- Reads the token cookie directly.
+- Adds the token to the blacklist collection.
+- Clears the cookie.
+- Success response: HTTP 200.
+- Missing token: HTTP 400.
+
+GET /api/auth/getme
+- Protected route.
+- Uses authUser middleware.
+- Returns the logged-in user's id, username, and email.
+
+
+11. INTERVIEW REPORT WORKFLOW
+-----------------------------
+1. The logged-in user submits jobDescription, selfDescription, and a resume file.
+2. The request is sent as multipart/form-data to POST /api/interview/.
+3. authUser verifies the user's cookie token.
+4. Multer reads the file from the resume form field.
+5. The file remains in memory and is limited to 3 MB.
+6. pdf-parse reads the PDF buffer and extracts resume text.
+7. The controller sends resume text, selfDescription, and jobDescription to the AI
+	 service.
+8. The AI service sends the information to Groq using the llama-3.3-70b-versatile
+	 model.
+9. Groq is instructed to return only structured JSON.
+10. The response is trimmed and the JSON object is extracted.
+11. JSON.parse converts the response to a JavaScript object.
+12. Zod validates the generated object.
+13. The validated report is saved in MongoDB with the authenticated user's id.
+14. The saved report is returned in the response.
+
+The AI report includes:
+- Match score
+- Interview title
+- Technical interview questions
+- Behavioral interview questions
+- Explanation/intention for each question
+- Suggested answer points for each question
+- Skill gaps and their severity
+- Day-by-day interview preparation plan
+
+The prompt asks Groq to generate at least five technical questions and at least five
+behavioral questions.
+
+
+12. INTERVIEW API ROUTES
+------------------------
+
+POST /api/interview/
+- Protected route.
+- Middleware order:
+	1. authUser
+	2. upload.single("resume")
+	3. generateInterviewReportController
+- Request type: multipart/form-data.
+- Form fields: jobDescription, selfDescription, resume.
+- Resume upload limit: 3 MB.
+- Success response: HTTP 201 with interviewReport.
+
+GET /api/interview/report/:interviewId
+- Protected route.
+- Finds the report by interviewId and the logged-in user's id.
+- A user cannot fetch another user's report through this query.
+- Success response: HTTP 200.
+- Report not found: HTTP 404.
+- Controller errors: HTTP 500.
+
+GET /api/interview/
+- Protected route.
+- Returns all reports for the logged-in user.
+- Sorts reports by createdAt in descending order.
+- Omits resume, selfDescription, jobDescription, version data, and detailed question
+	fields from the list response.
+- Success response: HTTP 200.
+- Controller errors: HTTP 500.
+
+
+13. DATABASE MODELS
+-------------------
+
+USER MODEL
+Collection: users
+
+- username: required unique string
+- email: required unique string
+- password: required string containing the bcrypt hash
+
+BLACKLIST MODEL
+Collection: tokens
+
+- token: required string
+- createdAt: automatic timestamp
+- updatedAt: automatic timestamp
+
+INTERVIEW REPORT MODEL
+Collection: InterviewReport
+
+- jobDescription: required string
+- resume: extracted resume text
+- selfDescription: candidate's self-description
+- matchScore: number with a minimum of 0 and maximum of 100
+- technicalQuestions: embedded technical question array
+- behaviouralQuestions: embedded behavioral question array
+- skillGaps: embedded skill-gap array
+- preparationPlanSchema: embedded preparation-plan array
+- user: MongoDB ObjectId reference to the users collection
+- title: required string
+- createdAt: automatic timestamp
+- updatedAt: automatic timestamp
+
+TECHNICAL AND BEHAVIORAL QUESTION OBJECTS
+- question: required string
+- intention: required string
+- answer: required string
+- Embedded object ids are disabled.
+
+SKILL GAP OBJECTS
+- skills: required string
+- severity: required value of low, medium, or high
+- Embedded object ids are disabled.
+
+PREPARATION PLAN OBJECTS
+- day: required string in the MongoDB schema
+- focus: required string
+- tasks: required string array
+- Embedded object ids are disabled.
+
+
+14. AI VALIDATION SCHEMA
+------------------------
+The Zod schema expects:
+
+- matchScore: number
+- title: string
+- technicalQuestions: array of objects containing question, intention, and answer
+- behavioralQuestions: array of objects containing question, intention, and answer
+- skillGaps: array with skills and severity
+- preparationPlan: array with numeric day, focus, and string tasks
+
+Allowed skill-gap severity values are low, medium, and high.
+
+If Groq returns invalid JSON, the service throws an invalid-format error.
+If the parsed object does not match the Zod schema, the service throws a schema
+validation error and the report is not saved.
+
+
+15. CURRENT IMPLEMENTATION NOTES
+--------------------------------
+- Authentication routes and interview-report routes are implemented.
+- Interview report generation is connected to Groq and MongoDB.
+- Reports are associated with the authenticated user.
+- The backend has no automated tests configured.
+- The server port is fixed at 3000 instead of being read from an environment variable.
+- Database connection errors are logged, but the process is not explicitly terminated
+	after a failed connection.
+- Multer limits file size but does not explicitly validate the file extension or MIME
+	type.
+- The report controller assumes that req.file exists and that the uploaded file is a
+	readable PDF.
+- There is no shared Express error-handling middleware for unexpected controller or
+	upload errors.
+- Blacklisted tokens have timestamps but no cleanup or expiration policy.
+- zod-to-json-schema is installed but currently unused.
+- temp.js contains sample data and is not part of the active request workflow.
+
+
+16. HOW TO RUN THE BACKEND
+--------------------------
+1. Open a terminal in the Backend folder.
+2. Install dependencies:
+
+	 npm install
+
+3. Add these values to Backend/.env:
+
+	 MONGO_URI=your_mongodb_connection_string
+	 JWT_SECRET=your_jwt_secret
+	 GROQ_API_KEY=your_groq_api_key
+
+4. Start the server:
+
+	 node server.js
+
+5. The backend API will be available at:
+
+	 http://localhost:3000
+
+The configured frontend is expected at http://localhost:5173.

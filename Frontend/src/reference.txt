@@ -1,0 +1,137 @@
+REACT 4-LAYER ARCHITECTURE
+
+--------------------------------------------------
+
+1. UI LAYER (Presentation Layer)
+
+Purpose:
+- Handles only what the user sees
+- No business logic
+
+Structure:
+ui/
+  components/
+  pages/
+  layouts/
+
+Details:
+- components/ → reusable UI (Button, Input, Card)
+- pages/ → full screens (LoginPage, Home, Dashboard)
+- layouts/ → common structure (Navbar, Sidebar, Footer)
+
+Rules:
+- Do NOT call APIs here
+- Do NOT manage global state
+- Keep it purely for rendering
+
+--------------------------------------------------
+
+2. HOOKS LAYER (Logic Layer)
+
+Purpose:
+- Handles logic and coordination
+- Connects UI with state and API
+
+Structure:
+hooks/
+  useAuth.js
+  useProducts.js
+  useFetch.js
+
+Responsibilities:
+- Call APIs
+- Process data
+- Update state
+- Reuse logic across components
+
+Example Flow:
+UI → Hook → API → State
+
+Rules:
+- No UI rendering
+- Only logic and function handling
+
+--------------------------------------------------
+
+3. STATE LAYER (Data Layer)
+
+Purpose:
+- Stores global data (single source of truth)
+
+Structure:
+context/
+  auth.context.jsx
+  ai.context.jsx
+
+Responsibilities:
+- Store user data
+- Store tokens
+- Manage global app state
+
+Example:
+- login()
+- logout()
+- setUser()
+
+Rules:
+- Do NOT call APIs here
+- Do NOT include UI logic
+- Only manage and provide state
+
+--------------------------------------------------
+
+4. API LAYER (Service Layer)
+
+Purpose:
+- Communicates with backend
+
+Structure:
+services/
+  auth.api.js
+  product.api.js
+
+Responsibilities:
+- Make HTTP requests (GET, POST, PUT, DELETE)
+- Return response data
+
+Rules:
+- No state updates
+- No UI logic
+- Only network calls
+
+--------------------------------------------------
+
+FULL DATA FLOW
+
+User Action (Click)
+→ UI (Page/Component)
+→ Hook (Logic)
+→ API (Request)
+→ State (Store Data)
+→ UI Updates
+
+--------------------------------------------------
+
+KEY PRINCIPLES
+
+1. UI = Display only
+2. Hooks = Logic
+3. State = Storage
+4. API = Communication
+
+--------------------------------------------------
+
+COMMON MISTAKES
+
+- Calling APIs inside components
+- Mixing logic inside UI
+- Managing state inside API files
+- Writing everything in one place
+
+--------------------------------------------------
+
+ONE LINE SUMMARY
+
+UI shows → Hooks handle logic → API fetches → State stores → UI updates
+
+--------------------------------------------------
