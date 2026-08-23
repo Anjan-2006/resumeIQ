@@ -995,6 +995,10 @@ $radius-xs: 8px;
   padding: 24px;
   background: rgba(7, 9, 16, 0.82);
   backdrop-filter: blur(8px);
+
+  @media (max-width: 768px) {
+    padding: 12px;
+  }
 }
 
 .hm-resume-preview-modal {
@@ -1007,6 +1011,11 @@ $radius-xs: 8px;
   border: 1px solid var(--iv-border);
   border-radius: $radius;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+
+  @media (max-width: 768px) {
+    height: 100%;
+    border-radius: 12px;
+  }
 }
 
 .hm-resume-preview-header {
@@ -1017,8 +1026,13 @@ $radius-xs: 8px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--iv-border);
 
+  > div {
+    min-width: 0;
+    flex: 1;
+  }
+
   h2 {
-    max-width: 760px;
+    max-width: 100%;
     margin-top: 4px;
     overflow: hidden;
     color: var(--iv-text-primary);
