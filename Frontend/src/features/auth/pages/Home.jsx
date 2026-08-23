@@ -134,6 +134,15 @@ const IconEmpty = () => (
   </svg>
 );
 
+const formatFilename = (name) => {
+  if (!name) return 'Untitled Document';
+  return name
+    .replace(/\.[^/.]+$/, '') // Remove extension
+    .replace(/[_-]+/g, ' ')   // Replace underscores/hyphens with spaces
+    .replace(/\s+/g, ' ')     // Remove extra spaces
+    .trim();
+};
+
 export default function Home() {
   const { generateInterviewReport, getAllReports, reports, renameReport, deleteReport, getAllGeneratedResumes, generatedResumes, fetchResumePdfBlob, downloadResume, deleteGeneratedResume } = useInterview();
 
@@ -641,7 +650,7 @@ export default function Home() {
                         </button>
                       </form>
                     ) : (
-                      <h4 className="hm-report-title">{report.title || 'Untitled Report'}</h4>
+                      <h4 className="hm-report-title" title={report.title || 'Untitled Report'}>{report.title || 'Untitled Report'}</h4>
                     )}
 
                     <div className="hm-report-meta">
@@ -700,7 +709,7 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <h4 className="hm-report-title">{resume.fileName}</h4>
+                    <h4 className="hm-report-title" title={resume.fileName}>{formatFilename(resume.fileName)}</h4>
                     <div className="hm-report-meta">
                       <IconClock />
                       <span>{formatDate(resume.createdAt)}</span>
@@ -729,7 +738,7 @@ export default function Home() {
             <div className="hm-resume-preview-header">
               <div>
                 <span className="hm-resume-preview-label">Resume Preview</span>
-                <h2>{previewResume.fileName}</h2>
+                <h2>{formatFilename(previewResume.fileName)}</h2>
               </div>
               <button
                 type="button"
@@ -744,7 +753,7 @@ export default function Home() {
             <iframe
               src={`${previewResume.url}#toolbar=0&navpanes=0`}
               className="hm-resume-preview-frame"
-              title={`Preview of ${previewResume.fileName}`}
+              title={`Preview of ${formatFilename(previewResume.fileName)}`}
             />
           </div>
         </div>

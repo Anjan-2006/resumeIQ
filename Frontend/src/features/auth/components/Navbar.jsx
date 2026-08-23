@@ -59,7 +59,9 @@ export default function Navbar() {
         <div className="navbar-actions">
           {user && (
             <>
-              <span className="user-name-plain">{user.isGuest ? 'Guest Demo' : (user.username || user.email)}</span>
+              <span className="user-name-plain">
+                {user.username?.includes('Guest') ? 'Guest Mode' : (user.username || user.email)}
+              </span>
               <button onClick={onLogout} className="logout-btn" title="Logout">
                 <IconLogout />
                 <span className="logout-text">Logout</span>
