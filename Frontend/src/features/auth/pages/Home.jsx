@@ -4,6 +4,12 @@ import Navbar from '../components/Navbar';
 import useInterview from '../../interview/hooks/useInterview';
 import '../styles/home.scss';
 
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
 /* ── SVG Icons ── */
 const IconBriefcase = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -750,11 +756,19 @@ export default function Home() {
                 <IconX />
               </button>
             </div>
-            <iframe
-              src={`${previewResume.url}#toolbar=0&navpanes=0`}
-              className="hm-resume-preview-frame"
-              title={`Preview of ${formatFilename(previewResume.fileName)}`}
-            />
+            <div className="hm-resume-preview-frame" style={{ display: 'flex', justifyContent: 'center', overflowY: 'auto', backgroundColor: '#f0f0f0' }}>
+              <Document
+                file={previewResume.url}
+                loading={<div className="hm-reports-loading"><div className="hm-btn-spinner" /><span>Loading PDF...</span></div>}
+              >
+                <Page 
+                  pageNumber={1} 
+                  renderTextLayer={false} 
+                  renderAnnotationLayer={false} 
+                  width={Math.min(window.innerWidth - 60, 800)}
+                />
+              </Document>
+            </div>
           </div>
         </div>
       )}
