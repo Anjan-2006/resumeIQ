@@ -1021,6 +1021,15 @@ $radius-xs: 8px;
   background: #ffffff;
 }
 
+.iv-resume-pdf-page {
+  margin-bottom: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
 .iv-btn-spinner {
   width: 16px;
   height: 16px;

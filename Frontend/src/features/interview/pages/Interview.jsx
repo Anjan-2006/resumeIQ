@@ -4,6 +4,12 @@ import useInterview from '../hooks/useInterview';
 import { ResumeIQLogo } from '../../auth/components/Navbar';
 import '../style/interview.scss';
 
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
 const IconArrowLeft = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="19" y1="12" x2="5" y2="12" />
@@ -168,6 +174,7 @@ export default function Interview({ reportData }) {
   const [savedResume, setSavedResume] = useState(null);
   const [savingResume, setSavingResume] = useState(false);
   const [resumeError, setResumeError] = useState('');
+  const [resumeNumPages, setResumeNumPages] = useState(null);
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const previewRef = useRef(null);
 
@@ -691,12 +698,34 @@ export default function Interview({ reportData }) {
                   )}
 
                   {/* Embedded PDF Live Preview */}
-                  <div ref={previewRef} className="iv-resume-preview-wrapper">
-                    <iframe
-                      src={`${resumeBlobUrl}#toolbar=0&navpanes=0`}
-                      className="iv-resume-iframe"
-                      title="Tailored Resume Preview"
-                    />
+                  <div ref={previewRef} className="iv-resume-preview-wrapper" style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#1b1d24', padding: '24px 0' }}>
+                    <Document
+                      file={resumeBlobUrl}
+                      onLoadSuccess={({ numPages }) => setResumeNumPages(numPages)}
+                      loading={
+                        <div className="iv-resume-loading" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--iv-text-muted)', padding: '24px' }}>
+                          <div className="iv-btn-spinner dark" />
+                          <span>Rendering PDF preview...</span>
+                        </div>
+                      }
+                      error={
+                        <div className="iv-resume-alert error" style={{ margin: '20px' }}>
+                          <IconAlert />
+                          <span>Failed to load PDF preview.</span>
+                        </div>
+                      }
+                    >
+                      {Array.from(new Array(resumeNumPages || 1), (el, index) => (
+                        <Page
+                          key={`resume_page_${index + 1}`}
+                          pageNumber={index + 1}
+                          renderTextLayer={false}
+                          renderAnnotationLayer={false}
+                          width={Math.min(window.innerWidth > 1000 ? 760 : window.innerWidth - 60, 800)}
+                          className="iv-resume-pdf-page"
+                        />
+                      ))}
+                    </Document>
                   </div>
                 </div>
               )}

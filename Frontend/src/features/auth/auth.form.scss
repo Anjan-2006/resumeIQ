@@ -105,6 +105,46 @@ main.auth-main {
   }
 }
 
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .form-control {
+    padding-right: 42px;
+  }
+
+  .password-toggle-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 4px;
+    margin: 0;
+    width: auto;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.2s ease;
+    box-shadow: none;
+
+    &:hover {
+      color: var(--text-main);
+      background: transparent;
+    }
+
+    &:active {
+      transform: translateY(-50%) scale(0.95);
+    }
+  }
+}
+
 .mb-4 {
   margin-bottom: 1.5rem;
 }
