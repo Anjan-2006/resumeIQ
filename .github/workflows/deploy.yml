@@ -29,8 +29,24 @@ jobs:
         run: npm ci
 
       - name: Check backend
-        run: node -e "require('./src/app'); console.log('Backend check passed')"
-
+        env:
+         MONGO_URI: mongodb://localhost:27017/resumeiq-test
+         JWT_SECRET: test-jwt-secret
+         ACCESS_TOKEN_SECRET: test-access-token-secret
+         REFRESH_TOKEN_SECRET: test-refresh-token-secret
+         GROQ_API_KEY: test-key
+         AWS_REGION: ap-south-1
+         S3_BUCKET_NAME: test-bucket
+         AWS_ACCESS_KEY_ID: test-key
+         AWS_SECRET_ACCESS_KEY: test-secret
+         GOOGLE_CLIENT_ID: test-client-id
+         GOOGLE_CLIENT_SECRET: test-client-secret
+         GOOGLE_CALLBACK_URL: http://localhost:3000/api/auth/google/callback
+         SMTP_HOST: localhost
+         SMTP_PORT: 587
+         SMTP_USER: test@example.com
+         SMTP_PASS: test-password
+         FRONTEND_URL: http://localhost:5173
 
   frontend:
     name: Frontend Build
