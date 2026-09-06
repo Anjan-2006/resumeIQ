@@ -1,0 +1,86 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: resumeiq-redis-service
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - resumeiq-network
+
+  backend-api:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    image: resumeiq-backend:latest
+    container_name: resumeiq-backend-api
+    restart: unless-stopped
+    command: ["npm", "start"]
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./Backend/.env
+        required: false
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RUN_STANDALONE_WORKER=true
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - resumeiq-network
+
+  backend-worker:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    image: resumeiq-backend:latest
+    container_name: resumeiq-backend-worker
+    restart: unless-stopped
+    command: ["npm", "run", "worker"]
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./Backend/.env
+        required: false
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - resumeiq-network
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-}
+    image: resumeiq-frontend:latest
+    container_name: resumeiq-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend-api
+    networks:
+      - resumeiq-network
+
+volumes:
+  redis_data:
+
+networks:
+  resumeiq-network:
+    driver: bridge

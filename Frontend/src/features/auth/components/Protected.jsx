@@ -10,6 +10,11 @@ function Protected({ children }) {
   }
 
   if (!user) {
+    const isExpired = typeof window !== 'undefined' && sessionStorage.getItem('resumeiq_session_expired') === 'true';
+    if (isExpired) {
+      sessionStorage.removeItem('resumeiq_session_expired');
+      return <Navigate to="/login?session_expired=true" replace />;
+    }
     return <Navigate to="/login" replace />;
   }
 

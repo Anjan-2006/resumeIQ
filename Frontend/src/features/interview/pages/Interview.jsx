@@ -4,11 +4,10 @@ import useInterview from '../hooks/useInterview';
 import { ResumeIQLogo } from '../../auth/components/Navbar';
 import '../style/interview.scss';
 
-import { Document, Page, pdfjs } from 'react-pdf';
+import '../../../config/pdfWorker';
+import { Document, Page } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const IconArrowLeft = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -236,6 +235,25 @@ export default function Interview({ reportData }) {
     };
   }, [resumeBlobUrl]);
 
+  const [previewWidth, setPreviewWidth] = useState(760);
+
+  useEffect(() => {
+    if (!previewRef.current) return;
+    const updateWidth = () => {
+      if (previewRef.current) {
+        const measured = previewRef.current.clientWidth;
+        if (measured > 0) {
+          setPreviewWidth(Math.min(Math.floor(measured - 32), 760));
+        }
+      }
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(previewRef.current);
+    return () => observer.disconnect();
+  }, [resumeBlobUrl, isPreviewFullscreen]);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsPreviewFullscreen(document.fullscreenElement === previewRef.current);
@@ -303,7 +321,13 @@ export default function Interview({ reportData }) {
       setResumeBlobUrl(url);
     } catch (err) {
       console.error("Resume generation failed:", err);
-      setResumeError(err.response?.data?.message || 'Failed to generate tailored resume PDF. Please check server logs.');
+      const rawMsg = err.response?.data?.message || err.message || '';
+      const isRateLimit = err.response?.status === 429 || rawMsg.toLowerCase().includes('too many');
+      if (isRateLimit) {
+        setResumeError(rawMsg || 'Too many resume generation requests. Please try again later.');
+      } else {
+        setResumeError('We couldn\'t generate your tailored resume right now. Please try again in a moment.');
+      }
     } finally {
       setGeneratingResume(false);
     }
@@ -619,7 +643,7 @@ export default function Interview({ reportData }) {
                     {generatingResume ? (
                       <>
                         <div className="iv-btn-spinner" />
-                        <span>Please wait, generating your resume (this may take a little time)...</span>
+                        <span>Generating resume...</span>
                       </>
                     ) : (
                       <>
@@ -642,7 +666,7 @@ export default function Interview({ reportData }) {
                   <div className="iv-resume-action-bar">
                     <div className="iv-resume-status">
                       <IconCheckCircle />
-                      <span>{savedResume ? 'Resume Saved' : 'Preview Ready - Review Before Saving'}</span>
+                      <span>{savedResume ? 'Saved to Your Account' : 'Preview Ready'}</span>
                     </div>
 
                     <div className="iv-resume-btn-group">
@@ -657,27 +681,39 @@ export default function Interview({ reportData }) {
                         ) : (
                           <IconRefresh />
                         )}
-                        <span>{generatingResume ? 'Generating...' : 'Not satisfied - Try again'}</span>
+                        <span>{generatingResume ? 'Generating...' : 'Try Again'}</span>
                       </button>
 
                       {savedResume ? (
                         <button
-                          className="iv-resume-action-btn primary"
-                          onClick={handleDownloadPdf}
+                          className="iv-resume-action-btn secondary"
+                          disabled
+                          title="Resume already saved to your account"
                         >
-                          <IconDownload />
-                          <span>Download PDF</span>
+                          <IconCheck />
+                          <span>Saved to Account</span>
                         </button>
                       ) : (
                         <button
-                          className="iv-resume-action-btn primary"
+                          className="iv-resume-action-btn secondary"
                           onClick={handleSaveResume}
                           disabled={savingResume || generatingResume}
+                          title="Save resume to your account"
                         >
-                          {savingResume ? <div className="iv-btn-spinner" /> : <IconCheck />}
-                          <span>{savingResume ? 'Saving...' : 'Looks good - Keep & Save'}</span>
+                          {savingResume ? <div className="iv-btn-spinner dark" /> : <IconFileText />}
+                          <span>{savingResume ? 'Saving...' : 'Save Resume'}</span>
                         </button>
                       )}
+
+                      <button
+                        className="iv-resume-action-btn primary"
+                        onClick={handleDownloadPdf}
+                        disabled={!resumeBlob || generatingResume}
+                        title="Download PDF to your device"
+                      >
+                        <IconDownload />
+                        <span>Download PDF</span>
+                      </button>
 
                       <button
                         className="iv-resume-action-btn preview-toggle"
@@ -698,7 +734,7 @@ export default function Interview({ reportData }) {
                   )}
 
                   {/* Embedded PDF Live Preview */}
-                  <div ref={previewRef} className="iv-resume-preview-wrapper" style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#1b1d24', padding: '24px 0' }}>
+                  <div ref={previewRef} className="iv-resume-preview-wrapper" style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#1b1d24', padding: '24px 0', WebkitOverflowScrolling: 'touch' }}>
                     <Document
                       file={resumeBlobUrl}
                       onLoadSuccess={({ numPages }) => setResumeNumPages(numPages)}
@@ -721,7 +757,8 @@ export default function Interview({ reportData }) {
                           pageNumber={index + 1}
                           renderTextLayer={false}
                           renderAnnotationLayer={false}
-                          width={Math.min(window.innerWidth > 1000 ? 760 : window.innerWidth - 60, 800)}
+                          renderMode="canvas"
+                          width={previewWidth}
                           className="iv-resume-pdf-page"
                         />
                       ))}

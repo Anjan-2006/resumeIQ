@@ -3,6 +3,7 @@ const { generateInterviewReport, generateResumePdf } = require('../services/ai.s
 const interviewModel = require('../models/interviewReport.model');
 const generatedResumeModel = require('../models/generatedResume.model');
 const { uploadResumePdf, getResumePdf, deleteResumePdf } = require('../services/s3.service');
+const { interviewReportQueue } = require('../queues/interviewReport.queue');
 const mongoose = require('mongoose');
 const userModel = require('../models/user.model');
 
@@ -13,7 +14,7 @@ async function consumeGuestQuota(userId, field, limit) {
   const user = await userModel.findOneAndUpdate(
     { _id: userId, isGuest: true, [field]: { $lt: limit } },
     { $inc: { [field]: 1 } },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!user) {
@@ -28,44 +29,105 @@ async function consumeGuestQuota(userId, field, limit) {
 
 
 
-async function generateInterviewReportController(req,res){
-      try {
-    if(!req.file || req.file.buffer.subarray(0,5).toString() !== "%PDF-"){
-      return res.status(400).json({message:"Only valid PDF resume files are supported"})
+async function generateInterviewReportController(req, res) {
+  try {
+    if (!req.file || req.file.buffer.subarray(0, 5).toString() !== "%PDF-") {
+      return res.status(400).json({ message: "Only valid PDF resume files are supported" });
     }
-        const isAllowed = await consumeGuestQuota(req.user.id, 'guestReportGenerations', GUEST_REPORT_LIMIT);
-        if (!isAllowed) {
-          return res.status(429).json({message:"Guest demo report limit reached. Please create an account to continue."});
-        }
-            const parser = new pdfParse.PDFParse(Uint8Array.from(req.file.buffer));
-            const resumeContent = await parser.getText();
-            const resumeText = resumeContent.text || resumeContent;
 
-            const {selfDescription,jobDescription}=req.body
+    const isAllowed = await consumeGuestQuota(req.user.id, 'guestReportGenerations', GUEST_REPORT_LIMIT);
+    if (!isAllowed) {
+      return res.status(429).json({ message: "Guest demo report limit reached. Please create an account to continue." });
+    }
 
-            const generateReportByAi=await generateInterviewReport({resume:resumeText,selfDescription,jobDescription})
+    const parser = new pdfParse.PDFParse(Uint8Array.from(req.file.buffer));
+    const resumeContent = await parser.getText();
+    const resumeText = resumeContent.text || resumeContent;
 
-            const interviewReport=await interviewModel.create({
-                  user:req.user.id,
-                  resume:resumeText, 
-                  selfDescription:selfDescription,
-                  jobDescription:jobDescription,
-                  matchScore:generateReportByAi.matchScore,
-                  technicalQuestions:generateReportByAi.technicalQuestions,
-                  behaviouralQuestions:generateReportByAi.behavioralQuestions,
-                  skillGaps:generateReportByAi.skillGaps,
-                  preparationPlanSchema:generateReportByAi.preparationPlan,
-                  title:generateReportByAi.title
-            })     
+    const { selfDescription, jobDescription } = req.body;
+    if (!jobDescription || !jobDescription.trim()) {
+      return res.status(400).json({ message: "Job Description is required" });
+    }
 
-            res.status(201).json({
-                  message:"Interview Report generate Successfully",
-                  interviewReport
-            })
-      } catch (error) {
-            console.error("Error in generateInterviewReportController:", error);
-            res.status(500).json({ message: "Unable to generate interview report" });
-      }
+    // Create initial interview report record with pending status
+    const interviewReport = await interviewModel.create({
+      user: req.user.id,
+      resume: resumeText,
+      selfDescription: selfDescription || "",
+      jobDescription: jobDescription,
+      title: "Generating Interview Report...",
+      status: "pending",
+    });
+
+    // Enqueue background job in BullMQ
+    let job;
+    try {
+      job = await interviewReportQueue.add("GENERATE_INTERVIEW_REPORT", {
+        interviewId: interviewReport._id.toString(),
+        userId: req.user.id,
+      });
+    } catch (queueErr) {
+      console.error("Failed to enqueue interview report job to BullMQ:", queueErr);
+      await interviewModel.findByIdAndDelete(interviewReport._id);
+      return res.status(503).json({ message: "Service temporarily unavailable. Could not queue job." });
+    }
+
+    return res.status(202).json({
+      message: "Interview report generation started",
+      jobId: job.id,
+      interviewId: interviewReport._id,
+    });
+  } catch (error) {
+    console.error("Error in generateInterviewReportController:", error);
+    return res.status(500).json({ message: "Unable to start interview report generation" });
+  }
+}
+
+async function getInterviewJobStatusController(req, res) {
+  try {
+    const { jobId } = req.params;
+    if (!jobId) {
+      return res.status(400).json({ message: "Job ID is required" });
+    }
+
+    const job = await interviewReportQueue.getJob(jobId);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    // User authorization: verify that the requesting user owns the job
+    if (job.data && job.data.userId && job.data.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: "Unauthorized to access this job status" });
+    }
+
+    const state = await job.getState();
+    const interviewId = job.returnvalue?.interviewId || job.data?.interviewId;
+
+    if (state === "completed") {
+      return res.status(200).json({
+        jobId,
+        status: "completed",
+        interviewId,
+      });
+    }
+
+    if (state === "failed") {
+      return res.status(200).json({
+        jobId,
+        status: "failed",
+        error: job.failedReason || "Interview report generation failed",
+      });
+    }
+
+    return res.status(200).json({
+      jobId,
+      status: state === "delayed" ? "waiting" : state,
+      interviewId,
+    });
+  } catch (error) {
+    console.error("Error in getInterviewJobStatusController:", error);
+    return res.status(500).json({ message: "Unable to retrieve job status" });
+  }
 }
 
 async function getInterviewReportById(req, res) {
@@ -142,7 +204,7 @@ async function renameInterviewReport(req, res) {
     const interviewReport = await interviewModel.findOneAndUpdate(
       { _id: interviewId, user: req.user.id },
       { title: title.trim() },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('title');
 
     if (!interviewReport) {
@@ -338,5 +400,6 @@ module.exports = {
   generateResumePdfController,
   saveGeneratedResumeController,
   downloadGeneratedResumeController,
-  deleteGeneratedResumeController
+  deleteGeneratedResumeController,
+  getInterviewJobStatusController
 };

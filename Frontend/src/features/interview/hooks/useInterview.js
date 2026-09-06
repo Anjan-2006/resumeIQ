@@ -1,4 +1,4 @@
-import { generateReport, getInterviewReportById, getAllInterviewReports, getGeneratedResumes, renameInterviewReport, deleteInterviewReport, generateResumePreview, saveGeneratedResume as saveGeneratedResumeApi, downloadResumePdf, deleteGeneratedResume as deleteGeneratedResumeApi } from '../services/interview.api'
+import { generateReport, getJobStatus, getInterviewReportById, getAllInterviewReports, getGeneratedResumes, renameInterviewReport, deleteInterviewReport, generateResumePreview, saveGeneratedResume as saveGeneratedResumeApi, downloadResumePdf, deleteGeneratedResume as deleteGeneratedResumeApi } from '../services/interview.api'
 import { useContext } from 'react'
 import { InterviewContext } from '../interview.context'
 
@@ -18,7 +18,38 @@ const useInterview = () => {
 
           try{
                   const response = await generateReport({jobDescription,selfDescription,resumeFile})  
-                  setReport(response.interviewReport)      
+                  
+                  // Synchronous response fallback
+                  if (response && response.interviewReport && response.interviewReport.matchScore !== undefined) {
+                    setReport(response.interviewReport);
+                    return response;
+                  }
+
+                  // Asynchronous BullMQ background job processing
+                  if (response && response.jobId) {
+                    const { jobId, interviewId } = response;
+                    const maxWaitMs = 120000;
+                    const intervalMs = 2000;
+                    const startTime = Date.now();
+
+                    while (Date.now() - startTime < maxWaitMs) {
+                      await new Promise((res) => setTimeout(res, intervalMs));
+                      const statusData = await getJobStatus(jobId);
+
+                      if (statusData.status === "completed") {
+                        const finalRes = await getInterviewReportById(statusData.interviewId || interviewId);
+                        setReport(finalRes.interviewReport);
+                        return { interviewReport: finalRes.interviewReport };
+                      }
+
+                      if (statusData.status === "failed") {
+                        throw new Error(statusData.error || "Interview report generation failed");
+                      }
+                    }
+
+                    throw new Error("Report generation timed out. Please check your reports dashboard.");
+                  }
+
                   return response;
           }
           catch(err){
@@ -28,7 +59,6 @@ const useInterview = () => {
           finally{
               setLoading(false)
           }
-          
     }
 
     const getReportbyId = async ({ interviewId }) => {

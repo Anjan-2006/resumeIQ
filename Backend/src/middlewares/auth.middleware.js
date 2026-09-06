@@ -1,35 +1,33 @@
-const jwt=require("jsonwebtoken")
-const config=require("../config/config")
-const tokenBlackListModel=require("../models/blacklist.model")
+const jwt = require("jsonwebtoken");
+const config = require("../config/config");
 
-async function authUser(req,res,next){
-    const token=req.cookies.token
+async function authUser(req, res, next) {
+  const token = req.cookies.accessToken;
 
-    if(!token){
-           return res.status(401).json({
-               message:"token not provided "
-           })
-    }
+  if (!token) {
+    return res.status(401).json({
+      message: "Access token not provided",
+      code: "TOKEN_MISSING",
+    });
+  }
 
-    const blacklisttoken=await tokenBlackListModel.findOne({token})
-   
-    if(blacklisttoken){
+  try {
+    const decoded = jwt.verify(token, config.ACCESS_TOKEN_SECRET);
+    req.user = decoded;
+    return next();
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
       return res.status(401).json({
-          message:"token is blacklisted try to login again"
-      })
-           
+        message: "Access token expired",
+        code: "TOKEN_EXPIRED",
+      });
     }
 
-    try{
-            const decoded=jwt.verify(token,config.JWT_SECRET)
-            req.user=decoded
-            next()
-    }
-    catch(err){
-          return res.status(401).json({
-              message:"invalid token"
-          })
-    }
+    return res.status(401).json({
+      message: "Invalid access token",
+      code: "TOKEN_INVALID",
+    });
+  }
 }
 
-module.exports={authUser}
+module.exports = { authUser };

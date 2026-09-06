@@ -2,10 +2,15 @@ const {Router}=require("express")
 const authMiddleware=require('../middlewares/auth.middleware')
 const interviewController=require('../controller/interview.controller')
 const upload=require('../middlewares/file.middleware')
+const {
+  aiReportLimiter,
+  pdfGenerationLimiter,
+} = require("../middlewares/rateLimiter.middleware");
 
 const interviewRouter=Router()
 
-interviewRouter.post('/',authMiddleware.authUser,upload.single("resume"),interviewController.generateInterviewReportController)
+interviewRouter.post('/',aiReportLimiter,authMiddleware.authUser,upload.single("resume"),interviewController.generateInterviewReportController)
+interviewRouter.get('/status/:jobId',authMiddleware.authUser,interviewController.getInterviewJobStatusController)
 
 interviewRouter.get('/report/:interviewId',authMiddleware.authUser,interviewController.getInterviewReportById)
 
@@ -16,7 +21,7 @@ interviewRouter.patch('/report/:interviewId',authMiddleware.authUser,interviewCo
 
 interviewRouter.delete('/report/:interviewId',authMiddleware.authUser,interviewController.deleteInterviewReport)
 
-interviewRouter.post("/resume/pdf/:interviewReportId",authMiddleware.authUser,interviewController.generateResumePdfController)
+interviewRouter.post("/resume/pdf/:interviewReportId",pdfGenerationLimiter,authMiddleware.authUser,interviewController.generateResumePdfController)
 interviewRouter.post("/resume/pdf/:interviewReportId/save",authMiddleware.authUser,upload.single("resumePdf"),interviewController.saveGeneratedResumeController)
 interviewRouter.get("/resume/:resumeId/download",authMiddleware.authUser,interviewController.downloadGeneratedResumeController)
 interviewRouter.delete("/resume/:resumeId",authMiddleware.authUser,interviewController.deleteGeneratedResumeController)

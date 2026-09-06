@@ -98,6 +98,16 @@ const interviewReportSchema=new mongoose.Schema({
      title:{
             type:String,
              required:[true,"title of the interview report is required"]
+     },
+     status:{
+            type:String,
+            enum:["pending","processing","completed","failed"],
+            default:"pending",
+            index:true
+     },
+     error:{
+            type:String,
+            default:null
      }
 }, { timestamps: true })
 

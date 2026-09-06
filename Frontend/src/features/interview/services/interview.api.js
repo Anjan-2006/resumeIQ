@@ -1,10 +1,12 @@
 import axios from 'axios';
-import { API_BASE_URL } from '../../../config/api';
+import { API_BASE_URL, setupAuthInterceptor } from '../../../config/api';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/interview`,
   withCredentials: true
 });
+
+setupAuthInterceptor(api);
 
 export async function generateReport({jobDescription,selfDescription,resumeFile}) {
     const formData=new FormData()
@@ -23,6 +25,16 @@ export async function generateReport({jobDescription,selfDescription,resumeFile}
     return response.data;
   } catch (err) {
     console.error("Generate report API error:", err);
+    throw err;
+  }
+}
+
+export async function getJobStatus(jobId) {
+  try {
+    const response = await api.get(`/status/${jobId}`);
+    return response.data;
+  } catch (err) {
+    console.error("Get job status API error:", err);
     throw err;
   }
 }

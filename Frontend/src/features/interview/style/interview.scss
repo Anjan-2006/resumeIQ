@@ -1021,13 +1021,29 @@ $radius-xs: 8px;
   background: #ffffff;
 }
 
-.iv-resume-pdf-page {
+.iv-resume-pdf-page,
+.react-pdf__Page {
   margin-bottom: 20px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  border-radius: 4px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
   overflow: hidden;
   display: flex;
   justify-content: center;
+  background: transparent;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+
+  canvas,
+  .react-pdf__Page__canvas {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 0 auto;
+    border-radius: 6px;
+    image-rendering: -webkit-optimize-contrast;
+    transform: translateZ(0);
+  }
 }
 
 .iv-btn-spinner {

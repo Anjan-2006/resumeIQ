@@ -1,20 +1,24 @@
 const express=require('express')
+const helmet=require('helmet')
 const authRouter=require('./routes/auth.route.js')
 const morgan=require("morgan")
 const cookieParser=require('cookie-parser')
 const cors=require('cors')
 const interviewRouter=require("./routes/interview.routes.js")
 const config=require('./config/config.js')
+const passport=require('./config/passport.js')
 
 
 const app = express()
 
+app.use(helmet())
 app.use(express.json())
 app.use(morgan('dev'))
 app.use(cookieParser())
+app.use(passport.initialize())
 app.use(cors({
   origin: (origin, callback) => {
-    const allowedOrigins = ["http://localhost:5173", config.FRONTEND_URL];
+    const allowedOrigins = ["http://localhost:5173", "http://localhost:5174", config.FRONTEND_URL];
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
@@ -22,6 +26,14 @@ app.use(cors({
   },
   credentials: true
 }));
+
+// Health check
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "resumeiq-backend"
+  });
+});
 
 //routes
 app.use("/api/auth",authRouter)

@@ -4,11 +4,10 @@
 
 .env
 .env.*
-!.env.example
 Backend/.env
+Backend/.env.*
 Frontend/.env
 Frontend/.env.*
-
 
 # ==============================
 # Dependencies and build output
@@ -16,28 +15,45 @@ Frontend/.env.*
 
 node_modules/
 **/node_modules/
+
 dist/
 **/dist/
-
+dist-ssr/
 
 # ==============================
-# Logs and local runtime files
+# Logs
 # ==============================
 
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*
-.DS_Store
-
+lerna-debug.log*
 
 # ==============================
-# Local credentials and exported secret files
+# Editor / OS files
+# ==============================
+
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.local
+
+# ==============================
+# Local credentials
 # ==============================
 
 *accessKeys*.csv
 *credentials*.csv
-
 
 # ==============================
 # Local test/download artifacts
@@ -50,10 +66,16 @@ pnpm-debug.log*
 *.bak
 *.out
 
-
 # ==============================
 # Local project artifacts
 # ==============================
 
 project_summary.txt
 resume.json
+
+# ==============================
+# Local screenshots / scratch files
+# ==============================
+
+Screenshot*.png
+something.txt

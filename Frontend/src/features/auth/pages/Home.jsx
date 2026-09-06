@@ -4,11 +4,10 @@ import Navbar from '../components/Navbar';
 import useInterview from '../../interview/hooks/useInterview';
 import '../styles/home.scss';
 
-import { Document, Page, pdfjs } from 'react-pdf';
+import '../../../config/pdfWorker';
+import { Document, Page } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 /* ── SVG Icons ── */
 const IconBriefcase = () => (
@@ -157,7 +156,6 @@ export default function Home() {
   const [selfDescription, setSelfDescription] = useState('');
   const resumeInputRef = useRef();
   const [loading, setLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState(1);
   const [error, setError] = useState('');
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -323,11 +321,6 @@ export default function Home() {
 
     setError('');
     setLoading(true);
-    setLoadingStep(1);
-
-    const stepInterval = setInterval(() => {
-      setLoadingStep((prev) => (prev < 3 ? prev + 1 : prev));
-    }, 4000);
 
     try {
       const response = await generateInterviewReport({
@@ -335,18 +328,28 @@ export default function Home() {
         selfDescription,
         resumeFile: uploadedFile
       });
-      clearInterval(stepInterval);
 
       if (response && response.interviewReport && response.interviewReport._id) {
         navigate(`/interview/${response.interviewReport._id}`);
       } else {
-        setError('Report generation failed. Please try again.');
+        setError('We couldn\'t generate your report right now. Please try again in a moment.');
         setLoading(false);
       }
     } catch (err) {
-      clearInterval(stepInterval);
-      console.error(err);
-      setError(err.response?.data?.message || 'Failed to generate report. Make sure Groq API key is valid.');
+      console.error('Report generation error:', err);
+      const rawMsg = err.response?.data?.message || err.message || '';
+      const isRateLimit =
+        err.response?.status === 429 ||
+        rawMsg.toLowerCase().includes('too many') ||
+        rawMsg.toLowerCase().includes('rate limit');
+
+      if (isRateLimit) {
+        setError(rawMsg || 'Too many requests. Please wait a bit before generating another report.');
+      } else if (rawMsg.toLowerCase().includes('timed out')) {
+        setError('Report generation took longer than expected. Please check your reports list in a moment.');
+      } else {
+        setError('We couldn\'t generate your report right now. Please try again in a moment.');
+      }
       setLoading(false);
     }
   };
@@ -525,7 +528,7 @@ export default function Home() {
 
                   <div className="hm-card hm-action-card">
                     <h3>Ready for Analysis?</h3>
-                    <p>Groq AI will generate a complete evaluation and custom roadmap.</p>
+                    <p>AI will analyze your resume against this job description and generate your roadmap.</p>
                     <button
                       type="submit"
                       className="hm-submit-btn"
@@ -756,16 +759,17 @@ export default function Home() {
                 <IconX />
               </button>
             </div>
-            <div className="hm-resume-preview-frame" style={{ display: 'flex', justifyContent: 'center', overflowY: 'auto', backgroundColor: '#f0f0f0' }}>
+            <div className="hm-resume-preview-frame" style={{ display: 'flex', justifyContent: 'center', overflowY: 'auto', backgroundColor: '#1b1d24', padding: '20px 0', WebkitOverflowScrolling: 'touch' }}>
               <Document
                 file={previewResume.url}
-                loading={<div className="hm-reports-loading"><div className="hm-btn-spinner" /><span>Loading PDF...</span></div>}
+                loading={<div className="hm-reports-loading" style={{ padding: '30px' }}><div className="hm-btn-spinner" /><span>Loading PDF...</span></div>}
               >
                 <Page 
                   pageNumber={1} 
                   renderTextLayer={false} 
                   renderAnnotationLayer={false} 
-                  width={Math.min(window.innerWidth - 60, 800)}
+                  renderMode="canvas"
+                  width={Math.min(window.innerWidth > 900 ? 760 : window.innerWidth - 48, 760)}
                 />
               </Document>
             </div>
@@ -779,25 +783,11 @@ export default function Home() {
           <div className="hm-modal">
             <div className="hm-modal-icon"><IconCpu /></div>
             <h2>Analyzing Profile & Job Match</h2>
-            <p>Our Groq LLM model is generating your custom report (~20 sec)...</p>
+            <p>Your personalized interview report and preparation roadmap are being prepared...</p>
 
-            <div className="hm-steps">
-              <div className={`hm-step ${loadingStep >= 1 ? 'active' : ''} ${loadingStep > 1 ? 'done' : ''}`}>
-                <span className="hm-step-icon">
-                  {loadingStep > 1 ? <IconCheck /> : <IconZap />}
-                </span>
-                <span>Parsing resume text & job requirements...</span>
-              </div>
-              <div className={`hm-step ${loadingStep >= 2 ? 'active' : ''} ${loadingStep > 2 ? 'done' : ''}`}>
-                <span className="hm-step-icon">
-                  {loadingStep > 2 ? <IconCheck /> : <IconZap />}
-                </span>
-                <span>Calculating match score & skill gaps...</span>
-              </div>
-              <div className={`hm-step ${loadingStep >= 3 ? 'active' : ''}`}>
-                <span className="hm-step-icon"><IconZap /></span>
-                <span>Crafting technical & STAR behavioral questions...</span>
-              </div>
+            <div className="hm-reports-loading" style={{ margin: '24px 0 8px', justifyContent: 'center' }}>
+              <div className="hm-btn-spinner" style={{ width: '28px', height: '28px' }} />
+              <span style={{ fontSize: '1rem', color: 'var(--hm-text-secondary)' }}>Generating report...</span>
             </div>
           </div>
         </div>
